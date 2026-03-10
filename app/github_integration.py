@@ -16,8 +16,10 @@ def list_user_issues(github_instance):
 def list_user_prs(github_instance):
     """List all open pull requests for the authenticated user."""
     user = github_instance.get_user()
-    prs = []
-    for repo in user.get_repos():
-        for pr in repo.get_pulls(state='open'):
-            prs.append(f"{pr.title} (#{pr.number}) in {repo.name}")
+    query = f"is:pr is:open author:{user.login}"
+    search_results = github_instance.search_issues(query=query)
+    prs = [
+        f"{issue.title} (#{issue.number}) in {issue.repository.full_name}"
+        for issue in search_results
+    ]
     return prs
