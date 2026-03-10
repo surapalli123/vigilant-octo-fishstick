@@ -17,7 +17,7 @@ def chat():
     token = data.get('token', '')
 
     if not token:
-        return jsonify({"message": "Please provide a GitHub token."})
+        return jsonify({"message": "Please provide a GitHub token."}), 401
 
     github_instance = authenticate_github(token)
 
