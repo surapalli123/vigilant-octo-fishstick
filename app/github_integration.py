@@ -20,4 +20,4 @@ def list_user_prs(github_instance):
     for repo in user.get_repos():
         for pr in repo.get_pulls(state='open'):
             prs.append(f"{pr.title} (#{pr.number}) in {repo.name}")
-    return prs if prs else ["No open pull requests found."]
+    return prs
