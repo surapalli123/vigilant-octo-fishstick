@@ -16,6 +16,29 @@
             <button onclick="sendMessage()">Send</button>
         </div>
     </div>
-    <script src="/static/js/script.js"></script>
+    <script>
+        function sendMessage() {
+            const tokenInput = document.getElementById('token-input');
+            const userInput = document.getElementById('user-input');
+            const chatBox = document.getElementById('chat-box');
+
+            if (!userInput || !chatBox) {
+                return;
+            }
+
+            const message = userInput.value.trim();
+            if (!message) {
+                return;
+            }
+
+            const messageElement = document.createElement('div');
+            messageElement.className = 'user-message';
+            messageElement.textContent = message;
+
+            chatBox.appendChild(messageElement);
+            userInput.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    </script>
 </body>
 </html>
