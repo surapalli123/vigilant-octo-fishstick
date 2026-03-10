@@ -11,13 +11,13 @@
         <h1>GitHub Chatbot</h1>
         <div id="chat-box" class="chat-box"></div>
         <div class="input-area">
-            <input type="password" id="token-input" placeholder="Enter your GitHub Token" autocomplete="off" />
+            <input type="password" id="token-input" placeholder="GitHub Token (optional, loaded from .env)" autocomplete="off" />
             <input type="text" id="user-input" placeholder="Ask me anything about GitHub..." />
             <button onclick="sendMessage()">Send</button>
         </div>
     </div>
     <script>
-        function sendMessage() {
+        async function sendMessage() {
             const tokenInput = document.getElementById('token-input');
             const userInput = document.getElementById('user-input');
             const chatBox = document.getElementById('chat-box');
@@ -31,14 +31,39 @@
                 return;
             }
 
-            const messageElement = document.createElement('div');
-            messageElement.className = 'user-message';
-            messageElement.textContent = message;
-
-            chatBox.appendChild(messageElement);
+            const userMsg = document.createElement('div');
+            userMsg.className = 'user-message';
+            userMsg.textContent = message;
+            chatBox.appendChild(userMsg);
             userInput.value = '';
             chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        token: tokenInput ? tokenInput.value : ''
+                    })
+                });
+                const data = await response.json();
+                const botMsg = document.createElement('div');
+                botMsg.className = 'bot-message';
+                botMsg.textContent = data.message;
+                chatBox.appendChild(botMsg);
+            } catch (err) {
+                const errMsg = document.createElement('div');
+                errMsg.className = 'bot-message';
+                errMsg.textContent = 'Error: Could not reach the server.';
+                chatBox.appendChild(errMsg);
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
+
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
     </script>
 </body>
 </html>

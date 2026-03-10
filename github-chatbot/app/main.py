@@ -1,12 +1,18 @@
-from flask import Flask, request, jsonify
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+from flask import Flask, request, jsonify, render_template
 from app.github_integration import authenticate_github, list_user_repos, list_user_issues, list_user_prs
 from app.chatbot import get_chat_response
 
-app = Flask(__name__)
+app = Flask(__name__,
+           template_folder='../templates',
+           static_folder='../static')
 
 @app.route('/')
 def home():
-    return "Welcome to the GitHub Chatbot!"
+    return render_template('index.html')
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -14,23 +20,25 @@ def chat():
     if data is None:
         return jsonify({"message": "Invalid or missing JSON in request body."}), 400
     user_message = data.get('message', '')
-    token = data.get('token', '')
+    token = data.get('token', '') or os.getenv('GITHUB_TOKEN', '')
 
     if not token:
         return jsonify({"message": "Please provide a GitHub token."}), 401
 
     github_instance = authenticate_github(token)
 
+    msg = user_message.lower()
+
     # Handle GitHub-specific queries
-    if "list my repositories" in user_message.lower():
+    if any(kw in msg for kw in ["list my repositories", "my repos", "my repositories"]):
         repos = list_user_repos(github_instance)
         return jsonify({"message": f"Your repositories: {', '.join(repos)}"})
 
-    elif "list my issues" in user_message.lower():
+    elif any(kw in msg for kw in ["list my issues", "my issues", "open issues"]):
         issues = list_user_issues(github_instance)
         return jsonify({"message": f"Your open issues: {', '.join(issues)}"})
 
-    elif "list my pull requests" in user_message.lower():
+    elif any(kw in msg for kw in ["list my pull requests", "my pull requests", "my prs", "open prs"]):
         prs = list_user_prs(github_instance)
         return jsonify({"message": f"Your open pull requests: {', '.join(prs)}"})
 
