@@ -10,7 +10,9 @@ def home():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    data = request.json
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"message": "Invalid or missing JSON in request body."}), 400
     user_message = data.get('message', '')
     token = data.get('token', '')
 
