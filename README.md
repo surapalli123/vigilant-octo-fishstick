@@ -64,8 +64,8 @@ OPENAI_API_KEY=your_openai_api_key
 python app/main.py
 ```
 
-### 6. Open the Chatbot
-Visit `http://127.0.0.1:5000` in your browser.
+### 6. Access the Application
+The Flask app runs at `http://127.0.0.1:5000`. By default, the root (`/`) route returns a plain text welcome message from the API. If you have wired up the UI template (see `templates/index.html`) in `app/main.py`, open the corresponding route you configured there in your browser.
 
 ## 💬 Example Queries
 | Query | Action |
