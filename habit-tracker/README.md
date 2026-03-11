@@ -176,7 +176,7 @@ GitHub Actions runs on every push and pull request to `main`:
 3. `npm run test` (client + server)
 4. `npm run build` (client + server)
 
-See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+See [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 ---
 
