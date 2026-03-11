@@ -137,4 +137,28 @@ describe('POST /api/habits/:id/complete', () => {
     expect(res.status).toBe(400)
     expect(res.body.error).toBe('Invalid habit ID')
   })
+
+  it('does not create a duplicate when the habit is already completed today', async () => {
+    const habit = { id: 1, name: 'Run', frequency: 'daily', active: true }
+    const log = { id: 1, habitId: 1, date: '2024-01-01', createdAt: new Date() }
+    mockFindUnique.mockResolvedValue(habit)
+    mockHabitLogUpsert.mockResolvedValue(log)
+
+    // First completion
+    const first = await request(app).post('/api/habits/1/complete')
+    expect(first.status).toBe(201)
+
+    // Second completion on the same day — upsert returns the existing record
+    const second = await request(app).post('/api/habits/1/complete')
+    expect(second.status).toBe(201)
+    expect(second.body.habitId).toBe(1)
+
+    // Confirm upsert (not create) was used both times — enforces the unique constraint
+    expect(mockHabitLogUpsert).toHaveBeenCalledTimes(2)
+    expect(mockHabitLogUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ habitId_date: expect.any(Object) }),
+      }),
+    )
+  })
 })

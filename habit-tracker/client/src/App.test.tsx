@@ -76,6 +76,17 @@ describe('Mark done', () => {
     expect(await screen.findByRole('button', { name: /mark done/i })).toBeInTheDocument()
   })
 
+  it('does not show "Mark done" button and shows "Done today" for habits already completed today', async () => {
+    const completedHabit = { ...mockHabits[0], completedToday: true }
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [completedHabit],
+    } as Response)
+    render(<App />)
+    expect(await screen.findByText(/done today/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /mark done/i })).not.toBeInTheDocument()
+  })
+
   it('shows completed state after marking a habit as done', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.spyOn(global, 'fetch')
