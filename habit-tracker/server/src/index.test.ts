@@ -289,3 +289,47 @@ describe('DELETE /api/habits/:id', () => {
     expect(res.body.error).toBe('Invalid habit ID')
   })
 })
+
+describe('GET /api/analytics', () => {
+  it('returns zeros when there are no active habits', async () => {
+    mockFindMany.mockResolvedValue([])
+    mockHabitLogFindMany.mockResolvedValue([])
+    const res = await request(app).get('/api/analytics')
+    expect(res.status).toBe(200)
+    expect(res.body.weeklyCompletionPct).toBe(0)
+    expect(res.body.habitsCompletedThisWeek).toBe(0)
+    expect(res.body.mostConsistentHabit).toBeNull()
+  })
+
+  it('returns correct weekly analytics when habits have logs this week', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const habits = [
+      { id: 1, name: 'Run', frequency: 'daily', active: true },
+      { id: 2, name: 'Read', frequency: 'daily', active: true },
+    ]
+    mockFindMany.mockResolvedValue(habits)
+    mockHabitLogFindMany.mockResolvedValue([{ habitId: 1, date: today }])
+    const res = await request(app).get('/api/analytics')
+    expect(res.status).toBe(200)
+    expect(res.body.weeklyCompletionPct).toBe(50)
+    expect(res.body.habitsCompletedThisWeek).toBe(1)
+    expect(res.body.mostConsistentHabit).toBe('Run')
+  })
+
+  it('returns 100% when all habits are completed this week', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const habits = [
+      { id: 1, name: 'Run', frequency: 'daily', active: true },
+      { id: 2, name: 'Read', frequency: 'daily', active: true },
+    ]
+    mockFindMany.mockResolvedValue(habits)
+    mockHabitLogFindMany.mockResolvedValue([
+      { habitId: 1, date: today },
+      { habitId: 2, date: today },
+    ])
+    const res = await request(app).get('/api/analytics')
+    expect(res.status).toBe(200)
+    expect(res.body.weeklyCompletionPct).toBe(100)
+    expect(res.body.habitsCompletedThisWeek).toBe(2)
+  })
+})
