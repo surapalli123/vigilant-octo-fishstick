@@ -19,6 +19,12 @@ function App() {
   const [nameError, setNameError] = useState('')
   const [submitError, setSubmitError] = useState('')
 
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editFrequency, setEditFrequency] = useState<'daily' | 'weekly'>('daily')
+  const [editNameError, setEditNameError] = useState('')
+  const [editSubmitError, setEditSubmitError] = useState('')
+
   const fetchHabits = async () => {
     try {
       const res = await fetch(`${API_BASE}/habits`)
@@ -79,6 +85,62 @@ function App() {
     }
   }
 
+  const startEdit = (habit: Habit) => {
+    setEditingHabit(habit)
+    setEditName(habit.name)
+    setEditFrequency(habit.frequency as 'daily' | 'weekly')
+    setEditNameError('')
+    setEditSubmitError('')
+  }
+
+  const cancelEdit = () => {
+    setEditingHabit(null)
+    setEditNameError('')
+    setEditSubmitError('')
+  }
+
+  const handleEditSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setEditNameError('')
+    setEditSubmitError('')
+
+    if (!editName.trim()) {
+      setEditNameError('Habit name is required')
+      return
+    }
+
+    if (!editingHabit) return
+
+    try {
+      const res = await fetch(`${API_BASE}/habits/${editingHabit.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName.trim(), frequency: editFrequency }),
+      })
+
+      if (res.ok) {
+        setEditingHabit(null)
+        await fetchHabits()
+      } else {
+        const data = (await res.json()) as { error?: string }
+        setEditSubmitError(data.error ?? 'Failed to update habit')
+      }
+    } catch {
+      setEditSubmitError('Failed to update habit')
+    }
+  }
+
+  const handleArchive = async (id: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/habits/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        await fetchHabits()
+      }
+    } catch {
+      // silently ignore network errors on archive
+    }
+  }
+
   return (
     <div className="app">
       <h1>Habit Tracker</h1>
@@ -122,18 +184,60 @@ function App() {
           <ul>
             {habits.map((habit) => (
               <li key={habit.id}>
-                <strong>{habit.name}</strong> — {habit.frequency}
-                {!habit.active && ' (inactive)'}
-                <span aria-label={`${habit.streak ?? 0} ${(habit.streak ?? 0) === 1 ? 'day' : 'days'} streak`}> 🔥 {habit.streak ?? 0} {(habit.streak ?? 0) === 1 ? 'day' : 'days'} streak</span>
-                {habit.completedToday ? (
-                  <span> ✓ Done today</span>
+                {editingHabit?.id === habit.id ? (
+                  <form onSubmit={(e) => { void handleEditSubmit(e) }} noValidate aria-label="Edit habit form">
+                    <div>
+                      <label htmlFor={`edit-name-${habit.id}`}>Habit Name</label>
+                      <input
+                        id={`edit-name-${habit.id}`}
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                      />
+                      {editNameError && <span role="alert">{editNameError}</span>}
+                    </div>
+                    <div>
+                      <label htmlFor={`edit-frequency-${habit.id}`}>Frequency</label>
+                      <select
+                        id={`edit-frequency-${habit.id}`}
+                        value={editFrequency}
+                        onChange={(e) => setEditFrequency(e.target.value as 'daily' | 'weekly')}
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                      </select>
+                    </div>
+                    {editSubmitError && <span role="alert">{editSubmitError}</span>}
+                    <button type="submit">Save</button>
+                    <button type="button" onClick={cancelEdit}>Cancel</button>
+                  </form>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => { void handleMarkDone(habit.id) }}
-                  >
-                    Mark done
-                  </button>
+                  <>
+                    <strong>{habit.name}</strong> — {habit.frequency}
+                    <span aria-label={`${habit.streak ?? 0} ${(habit.streak ?? 0) === 1 ? 'day' : 'days'} streak`}> 🔥 {habit.streak ?? 0} {(habit.streak ?? 0) === 1 ? 'day' : 'days'} streak</span>
+                    {habit.completedToday ? (
+                      <span> ✓ Done today</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { void handleMarkDone(habit.id) }}
+                      >
+                        Mark done
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => startEdit(habit)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { void handleArchive(habit.id) }}
+                    >
+                      Archive
+                    </button>
+                  </>
                 )}
               </li>
             ))}

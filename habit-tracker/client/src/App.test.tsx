@@ -151,3 +151,122 @@ describe('Streak display', () => {
   })
 })
 
+describe('Edit habit', () => {
+  it('shows an edit form when Edit button is clicked', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+    render(<App />)
+    expect(await screen.findByRole('button', { name: /edit/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /edit/i }))
+    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
+  })
+
+  it('cancels the edit form when Cancel is clicked', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /edit/i }))
+    await user.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
+  })
+
+  it('shows a validation error when edit name is empty', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /edit/i }))
+    const nameInput = screen.getByDisplayValue('Morning run')
+    await user.clear(nameInput)
+    await user.click(screen.getByRole('button', { name: /save/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Habit name is required')
+  })
+
+  it('updates the habit after a successful edit', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.spyOn(global, 'fetch')
+
+    // Initial load
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /edit/i }))
+
+    const nameInput = screen.getByDisplayValue('Morning run')
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Evening run')
+
+    // PUT /habits/1 succeeds
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ...mockHabits[0], name: 'Evening run' }),
+    } as Response)
+
+    // Re-fetch returns updated habit
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{ ...mockHabits[0], name: 'Evening run' }],
+    } as Response)
+
+    await user.click(screen.getByRole('button', { name: /save/i }))
+
+    expect(await screen.findByText('Evening run')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('Archive habit', () => {
+  it('shows an Archive button for each habit', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+    render(<App />)
+    expect(await screen.findByRole('button', { name: /archive/i })).toBeInTheDocument()
+  })
+
+  it('removes the habit from the list after archiving', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.spyOn(global, 'fetch')
+
+    // Initial load
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+
+    render(<App />)
+    expect(await screen.findByText('Morning run')).toBeInTheDocument()
+
+    // DELETE /habits/1 succeeds
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ...mockHabits[0], active: false }),
+    } as Response)
+
+    // Re-fetch returns empty list (archived habit excluded)
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [],
+    } as Response)
+
+    await user.click(screen.getByRole('button', { name: /archive/i }))
+
+    expect(await screen.findByText(/no habits yet/i)).toBeInTheDocument()
+    expect(screen.queryByText('Morning run')).not.toBeInTheDocument()
+  })
+})
+

@@ -2,18 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import request from 'supertest'
 import { app } from './index'
 
-const { mockFindMany, mockCreate, mockFindUnique, mockHabitLogFindMany, mockHabitLogUpsert } =
+const { mockFindMany, mockCreate, mockFindUnique, mockUpdate, mockHabitLogFindMany, mockHabitLogUpsert } =
   vi.hoisted(() => ({
     mockFindMany: vi.fn(),
     mockCreate: vi.fn(),
     mockFindUnique: vi.fn(),
+    mockUpdate: vi.fn(),
     mockHabitLogFindMany: vi.fn(),
     mockHabitLogUpsert: vi.fn(),
   }))
 
 vi.mock('@prisma/client', () => ({
   PrismaClient: vi.fn().mockImplementation(() => ({
-    habit: { findMany: mockFindMany, create: mockCreate, findUnique: mockFindUnique },
+    habit: { findMany: mockFindMany, create: mockCreate, findUnique: mockFindUnique, update: mockUpdate },
     habitLog: { findMany: mockHabitLogFindMany, upsert: mockHabitLogUpsert },
     $disconnect: vi.fn(),
   })),
@@ -203,5 +204,88 @@ describe('GET /api/habits streak', () => {
     const res = await request(app).get('/api/habits')
     expect(res.status).toBe(200)
     expect(res.body[0].streak).toBe(0)
+  })
+})
+
+describe('GET /api/habits active filter', () => {
+  it('returns only active habits by default', async () => {
+    const active = { id: 1, name: 'Run', frequency: 'daily', active: true }
+    mockFindMany.mockResolvedValue([active])
+    const res = await request(app).get('/api/habits')
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveLength(1)
+    expect(res.body[0].active).toBe(true)
+  })
+})
+
+describe('PUT /api/habits/:id', () => {
+  it('updates habit name', async () => {
+    const habit = { id: 1, name: 'Run', frequency: 'daily', active: true }
+    const updated = { ...habit, name: 'Sprint' }
+    mockFindUnique.mockResolvedValue(habit)
+    mockUpdate.mockResolvedValue(updated)
+    const res = await request(app).put('/api/habits/1').send({ name: 'Sprint' })
+    expect(res.status).toBe(200)
+    expect(res.body.name).toBe('Sprint')
+  })
+
+  it('updates habit frequency', async () => {
+    const habit = { id: 1, name: 'Run', frequency: 'daily', active: true }
+    const updated = { ...habit, frequency: 'weekly' }
+    mockFindUnique.mockResolvedValue(habit)
+    mockUpdate.mockResolvedValue(updated)
+    const res = await request(app).put('/api/habits/1').send({ frequency: 'weekly' })
+    expect(res.status).toBe(200)
+    expect(res.body.frequency).toBe('weekly')
+  })
+
+  it('returns 404 when habit does not exist', async () => {
+    mockFindUnique.mockResolvedValue(null)
+    const res = await request(app).put('/api/habits/999').send({ name: 'Sprint' })
+    expect(res.status).toBe(404)
+    expect(res.body.error).toBe('Habit not found')
+  })
+
+  it('returns 400 when id is not a number', async () => {
+    const res = await request(app).put('/api/habits/abc').send({ name: 'Sprint' })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('Invalid habit ID')
+  })
+
+  it('returns 400 when name is empty string', async () => {
+    const res = await request(app).put('/api/habits/1').send({ name: '   ' })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('name must be a non-empty string')
+  })
+
+  it('returns 400 when frequency is invalid', async () => {
+    const res = await request(app).put('/api/habits/1').send({ frequency: 'monthly' })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('frequency must be daily or weekly')
+  })
+})
+
+describe('DELETE /api/habits/:id', () => {
+  it('archives a habit by setting active to false', async () => {
+    const habit = { id: 1, name: 'Run', frequency: 'daily', active: true }
+    const archived = { ...habit, active: false }
+    mockFindUnique.mockResolvedValue(habit)
+    mockUpdate.mockResolvedValue(archived)
+    const res = await request(app).delete('/api/habits/1')
+    expect(res.status).toBe(200)
+    expect(res.body.active).toBe(false)
+  })
+
+  it('returns 404 when habit does not exist', async () => {
+    mockFindUnique.mockResolvedValue(null)
+    const res = await request(app).delete('/api/habits/999')
+    expect(res.status).toBe(404)
+    expect(res.body.error).toBe('Habit not found')
+  })
+
+  it('returns 400 when id is not a number', async () => {
+    const res = await request(app).delete('/api/habits/abc')
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('Invalid habit ID')
   })
 })

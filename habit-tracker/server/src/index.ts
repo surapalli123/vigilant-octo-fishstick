@@ -15,10 +15,14 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
 
-app.get('/api/habits', async (_req, res) => {
+app.get('/api/habits', async (req, res) => {
   try {
     const today = getCurrentDateString()
-    const habits = await prisma.habit.findMany({ orderBy: { createdAt: 'desc' } })
+    const includeArchived = req.query.includeArchived === 'true'
+    const habits = await prisma.habit.findMany({
+      where: includeArchived ? undefined : { active: true },
+      orderBy: { createdAt: 'desc' },
+    })
     const todayLogs = await prisma.habitLog.findMany({
       where: { date: today },
       select: { habitId: true },
@@ -103,6 +107,69 @@ app.post('/api/habits/:id/complete', async (req, res) => {
     res.status(201).json(log)
   } catch {
     res.status(500).json({ error: 'Failed to record completion' })
+  }
+})
+
+app.put('/api/habits/:id', async (req, res) => {
+  const habitId = parseInt(req.params.id, 10)
+  if (isNaN(habitId)) {
+    res.status(400).json({ error: 'Invalid habit ID' })
+    return
+  }
+
+  const { name, frequency } = req.body as { name?: unknown; frequency?: unknown }
+
+  if (name !== undefined && (typeof name !== 'string' || name.trim() === '')) {
+    res.status(400).json({ error: 'name must be a non-empty string' })
+    return
+  }
+
+  if (frequency !== undefined && frequency !== 'daily' && frequency !== 'weekly') {
+    res.status(400).json({ error: 'frequency must be daily or weekly' })
+    return
+  }
+
+  try {
+    const existing = await prisma.habit.findUnique({ where: { id: habitId } })
+    if (!existing) {
+      res.status(404).json({ error: 'Habit not found' })
+      return
+    }
+
+    const updated = await prisma.habit.update({
+      where: { id: habitId },
+      data: {
+        ...(name !== undefined ? { name: (name as string).trim() } : {}),
+        ...(frequency !== undefined ? { frequency: frequency as string } : {}),
+      },
+    })
+    res.json(updated)
+  } catch {
+    res.status(500).json({ error: 'Failed to update habit' })
+  }
+})
+
+app.delete('/api/habits/:id', async (req, res) => {
+  const habitId = parseInt(req.params.id, 10)
+  if (isNaN(habitId)) {
+    res.status(400).json({ error: 'Invalid habit ID' })
+    return
+  }
+
+  try {
+    const existing = await prisma.habit.findUnique({ where: { id: habitId } })
+    if (!existing) {
+      res.status(404).json({ error: 'Habit not found' })
+      return
+    }
+
+    const archived = await prisma.habit.update({
+      where: { id: habitId },
+      data: { active: false },
+    })
+    res.json(archived)
+  } catch {
+    res.status(500).json({ error: 'Failed to archive habit' })
   }
 })
 
