@@ -141,9 +141,36 @@ function App() {
     }
   }
 
+  const totalActive = habits.length
+  const completedToday = habits.filter((h) => h.completedToday).length
+  const completionPct = totalActive > 0 ? Math.round((completedToday / totalActive) * 100) : 0
+  const longestStreak = habits.reduce((max, h) => Math.max(max, h.streak ?? 0), 0)
+
   return (
     <div className="app">
       <h1>Habit Tracker</h1>
+
+      <section aria-label="Dashboard summary">
+        <h2>Today's Summary</h2>
+        <ul>
+          <li>
+            <span>Total Active Habits</span>
+            <strong aria-label="Total active habits">{totalActive}</strong>
+          </li>
+          <li>
+            <span>Completed Today</span>
+            <strong aria-label="Habits completed today">{completedToday}</strong>
+          </li>
+          <li>
+            <span>Completion</span>
+            <strong aria-label="Completion percentage today">{completionPct}%</strong>
+          </li>
+          <li>
+            <span>Longest Streak</span>
+            <strong aria-label="Longest current streak">{longestStreak} {longestStreak === 1 ? 'day' : 'days'}</strong>
+          </li>
+        </ul>
+      </section>
 
       <section aria-label="Create habit">
         <h2>Add a New Habit</h2>

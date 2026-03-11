@@ -228,6 +228,63 @@ describe('Edit habit', () => {
   })
 })
 
+describe('Dashboard summary', () => {
+  it('shows zero summary metrics when there are no habits', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response)
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: /today's summary/i })).toBeInTheDocument()
+    expect(screen.getByLabelText('Total active habits')).toHaveTextContent('0')
+    expect(screen.getByLabelText('Habits completed today')).toHaveTextContent('0')
+    expect(screen.getByLabelText('Completion percentage today')).toHaveTextContent('0%')
+    expect(screen.getByLabelText('Longest current streak')).toHaveTextContent('0 days')
+  })
+
+  it('shows correct summary metrics with habits', async () => {
+    const habits = [
+      { id: 1, name: 'Run', frequency: 'daily', active: true, completedToday: true, streak: 5 },
+      { id: 2, name: 'Read', frequency: 'daily', active: true, completedToday: false, streak: 3 },
+      { id: 3, name: 'Meditate', frequency: 'daily', active: true, completedToday: true, streak: 7 },
+    ]
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => habits,
+    } as Response)
+    render(<App />)
+    expect(await screen.findByLabelText('Total active habits')).toHaveTextContent('3')
+    expect(screen.getByLabelText('Habits completed today')).toHaveTextContent('2')
+    expect(screen.getByLabelText('Completion percentage today')).toHaveTextContent('67%')
+    expect(screen.getByLabelText('Longest current streak')).toHaveTextContent('7 days')
+  })
+
+  it('shows singular "day" when longest streak is 1', async () => {
+    const habits = [
+      { id: 1, name: 'Run', frequency: 'daily', active: true, completedToday: true, streak: 1 },
+    ]
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => habits,
+    } as Response)
+    render(<App />)
+    expect(await screen.findByLabelText('Longest current streak')).toHaveTextContent('1 day')
+  })
+
+  it('shows 100% completion when all habits are done today', async () => {
+    const habits = [
+      { id: 1, name: 'Run', frequency: 'daily', active: true, completedToday: true, streak: 2 },
+      { id: 2, name: 'Read', frequency: 'daily', active: true, completedToday: true, streak: 4 },
+    ]
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => habits,
+    } as Response)
+    render(<App />)
+    expect(await screen.findByLabelText('Completion percentage today')).toHaveTextContent('100%')
+  })
+})
+
 describe('Archive habit', () => {
   it('shows an Archive button for each habit', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({
