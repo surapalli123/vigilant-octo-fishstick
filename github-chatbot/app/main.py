@@ -38,6 +38,12 @@ def chat():
         issues = list_user_issues(github_instance)
         return jsonify({"message": f"Your open issues: {', '.join(issues)}"})
 
+    elif any(kw in msg for kw in ["merged pr", "merged pull request", "latest pr", "recent pr"]):
+        prs = list_user_prs(github_instance, state="merged")
+        if prs:
+            return jsonify({"message": f"Your recently merged pull requests:\n" + "\n".join(prs)})
+        return jsonify({"message": "No merged pull requests found."})
+
     elif any(kw in msg for kw in ["list my pull requests", "my pull requests", "my prs", "open prs"]):
         prs = list_user_prs(github_instance)
         return jsonify({"message": f"Your open pull requests: {', '.join(prs)}"})
