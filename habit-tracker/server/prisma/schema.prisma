@@ -11,17 +11,10 @@ datasource db {
 }
 
 model Habit {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  completions HabitCompletion[]
-}
-
-model HabitCompletion {
-  id          Int      @id @default(autoincrement())
-  habit       Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
-  habitId     Int
-  completedAt DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  name      String
+  frequency String   @default("daily")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
