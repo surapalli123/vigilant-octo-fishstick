@@ -21,6 +21,7 @@ vi.mock('@prisma/client', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Default: both habitLog.findMany calls (todayLogs + allLogs) return empty arrays
   mockHabitLogFindMany.mockResolvedValue([])
 })
 
@@ -160,5 +161,47 @@ describe('POST /api/habits/:id/complete', () => {
         where: expect.objectContaining({ habitId_date: expect.any(Object) }),
       }),
     )
+  })
+})
+
+describe('GET /api/habits streak', () => {
+  it('returns streak: 0 when there are no logs', async () => {
+    const habit = { id: 1, name: 'Run', frequency: 'daily', active: true }
+    mockFindMany.mockResolvedValue([habit])
+    mockHabitLogFindMany.mockResolvedValue([])
+    const res = await request(app).get('/api/habits')
+    expect(res.status).toBe(200)
+    expect(res.body[0].streak).toBe(0)
+  })
+
+  it('includes correct streak in the response for a daily habit', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const yesterdayDate = new Date()
+    yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1)
+    const yesterday = yesterdayDate.toISOString().slice(0, 10)
+
+    const habit = { id: 1, name: 'Run', frequency: 'daily', active: true }
+    mockFindMany.mockResolvedValue([habit])
+    // First call: today's completed logs
+    mockHabitLogFindMany.mockResolvedValueOnce([{ habitId: 1 }])
+    // Second call: all logs for streak calculation (2 consecutive days)
+    mockHabitLogFindMany.mockResolvedValueOnce([
+      { habitId: 1, date: today },
+      { habitId: 1, date: yesterday },
+    ])
+    const res = await request(app).get('/api/habits')
+    expect(res.status).toBe(200)
+    expect(res.body[0].streak).toBe(2)
+  })
+
+  it('returns streak: 0 for weekly habits regardless of log entries', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const habit = { id: 1, name: 'Long run', frequency: 'weekly', active: true }
+    mockFindMany.mockResolvedValue([habit])
+    mockHabitLogFindMany.mockResolvedValueOnce([{ habitId: 1 }])
+    mockHabitLogFindMany.mockResolvedValueOnce([{ habitId: 1, date: today }])
+    const res = await request(app).get('/api/habits')
+    expect(res.status).toBe(200)
+    expect(res.body[0].streak).toBe(0)
   })
 })

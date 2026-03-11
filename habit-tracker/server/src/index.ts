@@ -1,5 +1,6 @@
 import express from 'express'
 import { PrismaClient } from '@prisma/client'
+import { calculateDailyStreak } from './streak'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -23,7 +24,25 @@ app.get('/api/habits', async (_req, res) => {
       select: { habitId: true },
     })
     const completedIds = new Set(todayLogs.map((log: { habitId: number }) => log.habitId))
-    const result = habits.map((habit: { id: number; [key: string]: unknown }) => ({ ...habit, completedToday: completedIds.has(habit.id) }))
+
+    const allLogs = await prisma.habitLog.findMany({
+      select: { habitId: true, date: true },
+    })
+    const logsByHabit = new Map<number, string[]>()
+    for (const log of allLogs as Array<{ habitId: number; date: string }>) {
+      if (!log.date) continue
+      const existing = logsByHabit.get(log.habitId) ?? []
+      existing.push(log.date)
+      logsByHabit.set(log.habitId, existing)
+    }
+
+    const result = habits.map((habit: { id: number; frequency: string; [key: string]: unknown }) => ({
+      ...habit,
+      completedToday: completedIds.has(habit.id),
+      streak: habit.frequency === 'daily'
+        ? calculateDailyStreak(logsByHabit.get(habit.id) ?? [], today)
+        : 0,
+    }))
     res.json(result)
   } catch {
     res.status(500).json({ error: 'Failed to fetch habits' })
