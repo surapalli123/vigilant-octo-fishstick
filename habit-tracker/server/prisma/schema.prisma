@@ -11,10 +11,21 @@ datasource db {
 }
 
 model Habit {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   name      String
-  frequency String   @default("daily")
-  active    Boolean  @default(true)
+  frequency String     @default("daily")
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  logs      HabitLog[]
+}
+
+model HabitLog {
+  id        Int      @id @default(autoincrement())
+  habitId   Int
+  date      String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  habit     Habit    @relation(fields: [habitId], references: [id])
+
+  @@unique([habitId, date])
 }

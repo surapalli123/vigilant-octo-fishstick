@@ -8,14 +8,23 @@ const prisma = new PrismaClient()
 
 app.use(express.json())
 
+const getCurrentDateString = () => new Date().toISOString().slice(0, 10)
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
 
 app.get('/api/habits', async (_req, res) => {
   try {
+    const today = getCurrentDateString()
     const habits = await prisma.habit.findMany({ orderBy: { createdAt: 'desc' } })
-    res.json(habits)
+    const todayLogs = await prisma.habitLog.findMany({
+      where: { date: today },
+      select: { habitId: true },
+    })
+    const completedIds = new Set(todayLogs.map((log: { habitId: number }) => log.habitId))
+    const result = habits.map((habit: { id: number; [key: string]: unknown }) => ({ ...habit, completedToday: completedIds.has(habit.id) }))
+    res.json(result)
   } catch {
     res.status(500).json({ error: 'Failed to fetch habits' })
   }
@@ -48,6 +57,33 @@ app.post('/api/habits', async (req, res) => {
     res.status(201).json(habit)
   } catch {
     res.status(500).json({ error: 'Failed to create habit' })
+  }
+})
+
+app.post('/api/habits/:id/complete', async (req, res) => {
+  const habitId = parseInt(req.params.id, 10)
+  if (isNaN(habitId)) {
+    res.status(400).json({ error: 'Invalid habit ID' })
+    return
+  }
+
+  const today = getCurrentDateString()
+
+  try {
+    const habit = await prisma.habit.findUnique({ where: { id: habitId } })
+    if (!habit) {
+      res.status(404).json({ error: 'Habit not found' })
+      return
+    }
+
+    const log = await prisma.habitLog.upsert({
+      where: { habitId_date: { habitId, date: today } },
+      update: {},
+      create: { habitId, date: today },
+    })
+    res.status(201).json(log)
+  } catch {
+    res.status(500).json({ error: 'Failed to record completion' })
   }
 })
 

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import App from './App'
 
 const mockHabits = [
-  { id: 1, name: 'Morning run', frequency: 'daily', active: true },
+  { id: 1, name: 'Morning run', frequency: 'daily', active: true, completedToday: false },
 ]
 
 beforeEach(() => {
@@ -63,6 +63,48 @@ describe('Habit creation form', () => {
     await user.click(screen.getByRole('button', { name: /add habit/i }))
 
     expect(await screen.findByText('Morning run')).toBeInTheDocument()
+  })
+})
+
+describe('Mark done', () => {
+  it('shows a "Mark done" button for habits not completed today', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+    render(<App />)
+    expect(await screen.findByRole('button', { name: /mark done/i })).toBeInTheDocument()
+  })
+
+  it('shows completed state after marking a habit as done', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.spyOn(global, 'fetch')
+
+    // Initial load: habit not completed today
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+
+    render(<App />)
+    expect(await screen.findByRole('button', { name: /mark done/i })).toBeInTheDocument()
+
+    // POST /habits/1/complete succeeds
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 1, habitId: 1, date: '2024-01-01' }),
+    } as Response)
+
+    // Re-fetch returns habit as completed
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{ ...mockHabits[0], completedToday: true }],
+    } as Response)
+
+    await user.click(screen.getByRole('button', { name: /mark done/i }))
+
+    expect(await screen.findByText(/done today/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /mark done/i })).not.toBeInTheDocument()
   })
 })
 
