@@ -9,6 +9,12 @@ interface Habit {
   streak?: number
 }
 
+interface Analytics {
+  weeklyCompletionPct: number
+  mostConsistentHabit: string | null
+  habitsCompletedThisWeek: number
+}
+
 const API_BASE = '/api'
 
 function App() {
@@ -25,6 +31,8 @@ function App() {
   const [editNameError, setEditNameError] = useState('')
   const [editSubmitError, setEditSubmitError] = useState('')
 
+  const [analytics, setAnalytics] = useState<Analytics | null>(null)
+
   const fetchHabits = async () => {
     try {
       const res = await fetch(`${API_BASE}/habits`)
@@ -40,8 +48,23 @@ function App() {
     }
   }
 
+  const fetchAnalytics = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/analytics`)
+      if (res.ok) {
+        setAnalytics((await res.json()) as Analytics)
+      }
+    } catch {
+      // silently ignore analytics fetch errors
+    }
+  }
+
   useEffect(() => {
-    void fetchHabits()
+    const load = async () => {
+      await fetchHabits()
+      await fetchAnalytics()
+    }
+    void load()
   }, [])
 
   const handleSubmit = async (e: FormEvent) => {
@@ -65,6 +88,7 @@ function App() {
         setName('')
         setFrequency('daily')
         await fetchHabits()
+        await fetchAnalytics()
       } else {
         const data = (await res.json()) as { error?: string }
         setSubmitError(data.error ?? 'Failed to create habit')
@@ -79,6 +103,7 @@ function App() {
       const res = await fetch(`${API_BASE}/habits/${id}/complete`, { method: 'POST' })
       if (res.ok) {
         await fetchHabits()
+        await fetchAnalytics()
       }
     } catch {
       // silently ignore network errors on mark-done
@@ -121,6 +146,7 @@ function App() {
       if (res.ok) {
         setEditingHabit(null)
         await fetchHabits()
+        await fetchAnalytics()
       } else {
         const data = (await res.json()) as { error?: string }
         setEditSubmitError(data.error ?? 'Failed to update habit')
@@ -135,6 +161,7 @@ function App() {
       const res = await fetch(`${API_BASE}/habits/${id}`, { method: 'DELETE' })
       if (res.ok) {
         await fetchHabits()
+        await fetchAnalytics()
       }
     } catch {
       // silently ignore network errors on archive
@@ -168,6 +195,24 @@ function App() {
           <li>
             <span>Longest Streak</span>
             <strong aria-label="Longest current streak">{longestStreak} {longestStreak === 1 ? 'day' : 'days'}</strong>
+          </li>
+        </ul>
+      </section>
+
+      <section aria-label="Weekly analytics">
+        <h2>Weekly Analytics</h2>
+        <ul>
+          <li>
+            <span>Weekly Completion</span>
+            <strong aria-label="Weekly completion percentage">{analytics?.weeklyCompletionPct ?? 0}%</strong>
+          </li>
+          <li>
+            <span>Habits Completed This Week</span>
+            <strong aria-label="Habits completed this week">{analytics?.habitsCompletedThisWeek ?? 0}</strong>
+          </li>
+          <li>
+            <span>Most Consistent Habit</span>
+            <strong aria-label="Most consistent habit">{analytics?.mostConsistentHabit ?? '—'}</strong>
           </li>
         </ul>
       </section>

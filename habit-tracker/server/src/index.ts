@@ -1,6 +1,7 @@
 import express from 'express'
 import { PrismaClient } from '@prisma/client'
 import { calculateDailyStreak } from './streak'
+import { calculateWeeklyAnalytics, getWeekStart } from './analytics'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -170,6 +171,25 @@ app.delete('/api/habits/:id', async (req, res) => {
     res.json(archived)
   } catch {
     res.status(500).json({ error: 'Failed to archive habit' })
+  }
+})
+
+app.get('/api/analytics', async (_req, res) => {
+  try {
+    const today = getCurrentDateString()
+    const habits = await prisma.habit.findMany({
+      where: { active: true },
+      select: { id: true, name: true },
+    })
+    const weekStart = getWeekStart(today)
+    const weekLogs = await prisma.habitLog.findMany({
+      where: { date: { gte: weekStart, lte: today } },
+      select: { habitId: true, date: true },
+    })
+    const analytics = calculateWeeklyAnalytics(habits, weekLogs, today)
+    res.json(analytics)
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch analytics' })
   }
 })
 

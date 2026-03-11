@@ -327,3 +327,68 @@ describe('Archive habit', () => {
   })
 })
 
+describe('Weekly analytics', () => {
+  it('renders the weekly analytics section with values from the API', async () => {
+    const fetchMock = vi.spyOn(global, 'fetch')
+
+    // Initial habits fetch
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+
+    // Analytics fetch
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        weeklyCompletionPct: 75,
+        habitsCompletedThisWeek: 3,
+        mostConsistentHabit: 'Morning run',
+      }),
+    } as Response)
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: /weekly analytics/i })).toBeInTheDocument()
+    expect(await screen.findByLabelText('Weekly completion percentage')).toHaveTextContent('75%')
+    expect(screen.getByLabelText('Habits completed this week')).toHaveTextContent('3')
+    expect(screen.getByLabelText('Most consistent habit')).toHaveTextContent('Morning run')
+  })
+
+  it('shows a dash when there is no most consistent habit', async () => {
+    const fetchMock = vi.spyOn(global, 'fetch')
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [],
+    } as Response)
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        weeklyCompletionPct: 0,
+        habitsCompletedThisWeek: 0,
+        mostConsistentHabit: null,
+      }),
+    } as Response)
+
+    render(<App />)
+
+    expect(await screen.findByLabelText('Most consistent habit')).toHaveTextContent('—')
+  })
+
+  it('shows 0% and 0 habits when analytics data is unavailable', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      json: async () => ({}),
+    } as Response)
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: /weekly analytics/i })).toBeInTheDocument()
+    expect(screen.getByLabelText('Weekly completion percentage')).toHaveTextContent('0%')
+    expect(screen.getByLabelText('Habits completed this week')).toHaveTextContent('0')
+    expect(screen.getByLabelText('Most consistent habit')).toHaveTextContent('—')
+  })
+})
+
