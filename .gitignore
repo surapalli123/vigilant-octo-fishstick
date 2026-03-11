@@ -71,6 +71,9 @@ yarn-error.log*
 client/dist/
 server/dist/
 
+# TypeScript build info (incremental compile cache)
+*.tsbuildinfo
+
 # SQLite database files
 *.db
 *.db-journal
