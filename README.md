@@ -1,4 +1,71 @@
-# vigilant-octo-fishstick — LLM Integration Toolkit
+# vigilant-octo-fishstick
+
+This repository contains two projects:
+
+1. **Habit Tracker** — full-stack web application (React + Express + Prisma + SQLite)
+2. **LLM Integration Toolkit** — provider-agnostic Python framework for LLMs
+
+---
+
+## Habit Tracker — Quick Start
+
+### Prerequisites
+
+- **Node.js 20+** — [nodejs.org](https://nodejs.org)
+- **npm 9+** — bundled with Node.js 20
+
+### 1. Install all dependencies
+
+```bash
+npm install
+```
+
+This installs dependencies for `client/` and `server/` via npm workspaces.
+
+### 2. Set up the database
+
+```bash
+cd server
+npx prisma migrate dev --name init
+```
+
+Creates `prisma/dev.db` (SQLite) and generates the Prisma client.
+
+### 3. Run development servers
+
+```bash
+# Terminal 1 — frontend at http://localhost:5173
+npm run dev:client
+
+# Terminal 2 — backend  at http://localhost:3001
+npm run dev:server
+```
+
+### 4. Available root scripts
+
+| Command | Description |
+|---|---|
+| `npm install` | Install all workspace dependencies |
+| `npm run build` | Build client and server |
+| `npm run test` | Run all unit tests (Vitest) |
+| `npm run lint` | Lint client and server |
+| `npm run dev:client` | Start Vite dev server |
+| `npm run dev:server` | Start Express server with live reload |
+
+### Structure
+
+```
+client/     React + Vite + TypeScript frontend
+server/     Express + TypeScript backend + Prisma schema
+e2e/        Playwright E2E placeholder tests
+.github/    GitHub Actions CI workflow (lint / test / build)
+```
+
+See [`habit-tracker-README.md`](habit-tracker-README.md) for full documentation.
+
+---
+
+## LLM Integration Toolkit — vigilant-octo-fishstick
 
 A provider-agnostic Python framework for building applications with Large
 Language Models (LLMs).  Write your logic once against the common
