@@ -220,7 +220,7 @@ function App() {
       <section aria-label="Create habit">
         <h2>Add a New Habit</h2>
         <form onSubmit={(e) => { void handleSubmit(e) }} noValidate>
-          <div>
+          <div className="form-field">
             <label htmlFor="habit-name">Name</label>
             <input
               id="habit-name"
@@ -228,10 +228,12 @@ function App() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Morning run"
+              aria-describedby={nameError ? 'habit-name-error' : undefined}
+              aria-invalid={nameError ? true : undefined}
             />
-            {nameError && <span role="alert">{nameError}</span>}
+            {nameError && <span id="habit-name-error" className="field-error" role="alert">{nameError}</span>}
           </div>
-          <div>
+          <div className="form-field">
             <label htmlFor="habit-frequency">Frequency</label>
             <select
               id="habit-frequency"
@@ -255,20 +257,22 @@ function App() {
         ) : (
           <ul>
             {habits.map((habit) => (
-              <li key={habit.id}>
+              <li key={habit.id} className="habit-list-item">
                 {editingHabit?.id === habit.id ? (
                   <form onSubmit={(e) => { void handleEditSubmit(e) }} noValidate aria-label="Edit habit form">
-                    <div>
+                    <div className="form-field">
                       <label htmlFor={`edit-name-${habit.id}`}>Habit Name</label>
                       <input
                         id={`edit-name-${habit.id}`}
                         type="text"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
+                        aria-describedby={editNameError ? `edit-name-error-${habit.id}` : undefined}
+                        aria-invalid={editNameError ? true : undefined}
                       />
-                      {editNameError && <span role="alert">{editNameError}</span>}
+                      {editNameError && <span id={`edit-name-error-${habit.id}`} className="field-error" role="alert">{editNameError}</span>}
                     </div>
-                    <div>
+                    <div className="form-field">
                       <label htmlFor={`edit-frequency-${habit.id}`}>Frequency</label>
                       <select
                         id={`edit-frequency-${habit.id}`}
@@ -285,30 +289,37 @@ function App() {
                   </form>
                 ) : (
                   <>
-                    <strong>{habit.name}</strong> — {habit.frequency}
-                    <span aria-label={`${habit.streak ?? 0} ${(habit.streak ?? 0) === 1 ? 'day' : 'days'} streak`}> 🔥 {habit.streak ?? 0} {(habit.streak ?? 0) === 1 ? 'day' : 'days'} streak</span>
-                    {habit.completedToday ? (
-                      <span> ✓ Done today</span>
-                    ) : (
+                    <span className="habit-info">
+                      <strong>{habit.name}</strong> — {habit.frequency}
+                      <span aria-label={`${habit.streak ?? 0} ${(habit.streak ?? 0) === 1 ? 'day' : 'days'} streak`}> 🔥 {habit.streak ?? 0} {(habit.streak ?? 0) === 1 ? 'day' : 'days'} streak</span>
+                    </span>
+                    <span className="habit-actions">
+                      {habit.completedToday ? (
+                        <span> ✓ Done today</span>
+                      ) : (
+                        <button
+                          type="button"
+                          aria-label={`Mark done: ${habit.name}`}
+                          onClick={() => { void handleMarkDone(habit.id) }}
+                        >
+                          Mark done
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={() => { void handleMarkDone(habit.id) }}
+                        aria-label={`Edit ${habit.name}`}
+                        onClick={() => startEdit(habit)}
                       >
-                        Mark done
+                        Edit
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => startEdit(habit)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { void handleArchive(habit.id) }}
-                    >
-                      Archive
-                    </button>
+                      <button
+                        type="button"
+                        aria-label={`Archive ${habit.name}`}
+                        onClick={() => { void handleArchive(habit.id) }}
+                      >
+                        Archive
+                      </button>
+                    </span>
                   </>
                 )}
               </li>

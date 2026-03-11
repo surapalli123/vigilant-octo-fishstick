@@ -392,3 +392,57 @@ describe('Weekly analytics', () => {
   })
 })
 
+describe('Accessibility', () => {
+  it('action buttons have descriptive aria-labels identifying the habit', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+    render(<App />)
+    expect(await screen.findByRole('button', { name: /mark done: morning run/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /edit morning run/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /archive morning run/i })).toBeInTheDocument()
+  })
+
+  it('name input is marked aria-invalid and linked to error via aria-describedby when validation fails', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response)
+    render(<App />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /add habit/i }))
+    const input = screen.getByLabelText(/name/i)
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    const errorId = input.getAttribute('aria-describedby')
+    expect(errorId).toBeTruthy()
+    expect(document.getElementById(errorId!)).toHaveTextContent('Habit name is required')
+  })
+
+  it('edit name input is marked aria-invalid when edit validation fails', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /edit morning run/i }))
+    const nameInput = screen.getByDisplayValue('Morning run')
+    await user.clear(nameInput)
+    await user.click(screen.getByRole('button', { name: /save/i }))
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('habit list items have the habit-list-item class for mobile layout', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => mockHabits,
+    } as Response)
+    render(<App />)
+    await screen.findByText('Morning run')
+    const listItems = screen.getAllByRole('listitem')
+    const habitItem = listItems.find((el) => el.classList.contains('habit-list-item'))
+    expect(habitItem).toBeDefined()
+  })
+})
+
