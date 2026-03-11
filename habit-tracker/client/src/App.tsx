@@ -5,6 +5,7 @@ interface Habit {
   name: string
   frequency: string
   active: boolean
+  completedToday: boolean
 }
 
 const API_BASE = '/api'
@@ -66,6 +67,17 @@ function App() {
     }
   }
 
+  const handleMarkDone = async (id: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/habits/${id}/complete`, { method: 'POST' })
+      if (res.ok) {
+        await fetchHabits()
+      }
+    } catch {
+      // silently ignore network errors on mark-done
+    }
+  }
+
   return (
     <div className="app">
       <h1>Habit Tracker</h1>
@@ -111,6 +123,16 @@ function App() {
               <li key={habit.id}>
                 <strong>{habit.name}</strong> — {habit.frequency}
                 {!habit.active && ' (inactive)'}
+                {habit.completedToday ? (
+                  <span> ✓ Done today</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { void handleMarkDone(habit.id) }}
+                  >
+                    Mark done
+                  </button>
+                )}
               </li>
             ))}
           </ul>

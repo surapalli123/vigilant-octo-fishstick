@@ -2,20 +2,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import request from 'supertest'
 import { app } from './index'
 
-const { mockFindMany, mockCreate } = vi.hoisted(() => ({
-  mockFindMany: vi.fn(),
-  mockCreate: vi.fn(),
-}))
+const { mockFindMany, mockCreate, mockFindUnique, mockHabitLogFindMany, mockHabitLogUpsert } =
+  vi.hoisted(() => ({
+    mockFindMany: vi.fn(),
+    mockCreate: vi.fn(),
+    mockFindUnique: vi.fn(),
+    mockHabitLogFindMany: vi.fn(),
+    mockHabitLogUpsert: vi.fn(),
+  }))
 
 vi.mock('@prisma/client', () => ({
   PrismaClient: vi.fn().mockImplementation(() => ({
-    habit: { findMany: mockFindMany, create: mockCreate },
+    habit: { findMany: mockFindMany, create: mockCreate, findUnique: mockFindUnique },
+    habitLog: { findMany: mockHabitLogFindMany, upsert: mockHabitLogUpsert },
     $disconnect: vi.fn(),
   })),
 }))
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockHabitLogFindMany.mockResolvedValue([])
 })
 
 describe('GET /health', () => {
@@ -85,5 +91,50 @@ describe('POST /api/habits', () => {
     const res = await request(app).post('/api/habits').send({ name: '   ' })
     expect(res.status).toBe(400)
     expect(res.body.error).toBe('name is required')
+  })
+})
+
+describe('GET /api/habits completedToday', () => {
+  it('returns completedToday: false when no log exists for today', async () => {
+    const habit = { id: 1, name: 'Run', frequency: 'daily', active: true }
+    mockFindMany.mockResolvedValue([habit])
+    mockHabitLogFindMany.mockResolvedValue([])
+    const res = await request(app).get('/api/habits')
+    expect(res.status).toBe(200)
+    expect(res.body[0].completedToday).toBe(false)
+  })
+
+  it('returns completedToday: true when a log exists for today', async () => {
+    const habit = { id: 1, name: 'Run', frequency: 'daily', active: true }
+    mockFindMany.mockResolvedValue([habit])
+    mockHabitLogFindMany.mockResolvedValue([{ habitId: 1 }])
+    const res = await request(app).get('/api/habits')
+    expect(res.status).toBe(200)
+    expect(res.body[0].completedToday).toBe(true)
+  })
+})
+
+describe('POST /api/habits/:id/complete', () => {
+  it('records completion for today and returns 201', async () => {
+    const habit = { id: 1, name: 'Run', frequency: 'daily', active: true }
+    const log = { id: 1, habitId: 1, date: '2024-01-01', createdAt: new Date() }
+    mockFindUnique.mockResolvedValue(habit)
+    mockHabitLogUpsert.mockResolvedValue(log)
+    const res = await request(app).post('/api/habits/1/complete')
+    expect(res.status).toBe(201)
+    expect(res.body.habitId).toBe(1)
+  })
+
+  it('returns 404 when habit does not exist', async () => {
+    mockFindUnique.mockResolvedValue(null)
+    const res = await request(app).post('/api/habits/999/complete')
+    expect(res.status).toBe(404)
+    expect(res.body.error).toBe('Habit not found')
+  })
+
+  it('returns 400 when id is not a number', async () => {
+    const res = await request(app).post('/api/habits/abc/complete')
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('Invalid habit ID')
   })
 })
