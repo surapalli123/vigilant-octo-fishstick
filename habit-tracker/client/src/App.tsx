@@ -6,6 +6,7 @@ interface Habit {
   frequency: string
   active: boolean
   completedToday: boolean
+  streak?: number
 }
 
 const API_BASE = '/api'
@@ -123,6 +124,7 @@ function App() {
               <li key={habit.id}>
                 <strong>{habit.name}</strong> — {habit.frequency}
                 {!habit.active && ' (inactive)'}
+                <span aria-label={`${habit.streak ?? 0} ${(habit.streak ?? 0) === 1 ? 'day' : 'days'} streak`}> 🔥 {habit.streak ?? 0} {(habit.streak ?? 0) === 1 ? 'day' : 'days'} streak</span>
                 {habit.completedToday ? (
                   <span> ✓ Done today</span>
                 ) : (

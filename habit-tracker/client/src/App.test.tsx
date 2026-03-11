@@ -119,3 +119,35 @@ describe('Mark done', () => {
   })
 })
 
+describe('Streak display', () => {
+  it('shows the current streak for a habit', async () => {
+    const habitWithStreak = { ...mockHabits[0], streak: 5 }
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [habitWithStreak],
+    } as Response)
+    render(<App />)
+    expect(await screen.findByText(/5 days streak/i)).toBeInTheDocument()
+  })
+
+  it('shows 0 day streak when habit has no streak', async () => {
+    const habitWithNoStreak = { ...mockHabits[0], streak: 0 }
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [habitWithNoStreak],
+    } as Response)
+    render(<App />)
+    expect(await screen.findByText(/0 days streak/i)).toBeInTheDocument()
+  })
+
+  it('uses singular "day" when streak is 1', async () => {
+    const habitWith1Streak = { ...mockHabits[0], streak: 1 }
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [habitWith1Streak],
+    } as Response)
+    render(<App />)
+    expect(await screen.findByText(/1 day streak/i)).toBeInTheDocument()
+  })
+})
+
