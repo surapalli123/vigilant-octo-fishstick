@@ -13,10 +13,10 @@ def list_user_issues(github_instance):
     issues = github_instance.get_user().get_issues(state='open')
     return [f"{issue.title} (#{issue.number})" for issue in issues]
 
-def list_user_prs(github_instance):
-    """List all open pull requests for the authenticated user."""
+def list_user_prs(github_instance, state="open"):
+    """List pull requests for the authenticated user by state."""
     user = github_instance.get_user()
-    query = f"is:pr is:open author:{user.login}"
+    query = f"is:pr is:{state} author:{user.login}"
     search_results = github_instance.search_issues(query=query)
     prs = [
         f"{issue.title} (#{issue.number}) in {issue.repository.full_name}"
