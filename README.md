@@ -17,6 +17,7 @@ This repository contains two projects:
 ### 1. Install all dependencies
 
 ```bash
+cd habit-tracker
 npm install
 ```
 
@@ -25,7 +26,7 @@ This installs dependencies for `client/` and `server/` via npm workspaces.
 ### 2. Set up the database
 
 ```bash
-cd server
+cd habit-tracker/server
 npx prisma migrate dev --name init
 ```
 
@@ -34,6 +35,8 @@ Creates `prisma/dev.db` (SQLite) and generates the Prisma client.
 ### 3. Run development servers
 
 ```bash
+cd habit-tracker
+
 # Terminal 1 — frontend at http://localhost:5173
 npm run dev:client
 
@@ -41,7 +44,7 @@ npm run dev:client
 npm run dev:server
 ```
 
-### 4. Available root scripts
+### 4. Available root scripts (from `habit-tracker/`)
 
 | Command | Description |
 |---|---|
@@ -55,13 +58,15 @@ npm run dev:server
 ### Structure
 
 ```
-client/     React + Vite + TypeScript frontend
-server/     Express + TypeScript backend + Prisma schema
-e2e/        Playwright E2E placeholder tests
-.github/    GitHub Actions CI workflow (lint / test / build)
+habit-tracker/
+├── client/     React + Vite + TypeScript frontend
+├── server/     Express + TypeScript backend + Prisma schema
+├── e2e/        Playwright E2E placeholder tests
+└── README.md   Full habit-tracker documentation
+.github/        GitHub Actions CI workflow (lint / test / build)
 ```
 
-See [`habit-tracker-README.md`](habit-tracker-README.md) for full documentation.
+See [`habit-tracker/README.md`](habit-tracker/README.md) for full documentation.
 
 ---
 
