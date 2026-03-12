@@ -174,6 +174,45 @@ app.delete('/api/habits/:id', async (req, res) => {
   }
 })
 
+app.get('/api/export', async (req, res) => {
+  const format = req.query.format === 'csv' ? 'csv' : 'json'
+  try {
+    const habits = await prisma.habit.findMany({ orderBy: { createdAt: 'asc' } })
+    const completions = await prisma.habitLog.findMany({
+      select: { habitId: true, date: true },
+      orderBy: { date: 'asc' },
+    })
+
+    if (format === 'csv') {
+      const lines = ['id,name,frequency,active,completionDate']
+      const completionsByHabit = new Map<number, string[]>()
+      for (const c of completions as Array<{ habitId: number; date: string }>) {
+        const dates = completionsByHabit.get(c.habitId) ?? []
+        dates.push(c.date)
+        completionsByHabit.set(c.habitId, dates)
+      }
+      for (const habit of habits as Array<{ id: number; name: string; frequency: string; active: boolean }>) {
+        const dates = completionsByHabit.get(habit.id)
+        if (dates && dates.length > 0) {
+          for (const date of dates) {
+            lines.push(`${habit.id},"${habit.name.replace(/"/g, '""')}",${habit.frequency},${habit.active},${date}`)
+          }
+        } else {
+          lines.push(`${habit.id},"${habit.name.replace(/"/g, '""')}",${habit.frequency},${habit.active},`)
+        }
+      }
+      res.setHeader('Content-Type', 'text/csv')
+      res.setHeader('Content-Disposition', 'attachment; filename="habits.csv"')
+      res.send(lines.join('\n'))
+    } else {
+      res.setHeader('Content-Disposition', 'attachment; filename="habits.json"')
+      res.json({ habits, completions })
+    }
+  } catch {
+    res.status(500).json({ error: 'Failed to export data' })
+  }
+})
+
 app.get('/api/analytics', async (_req, res) => {
   try {
     const today = getCurrentDateString()

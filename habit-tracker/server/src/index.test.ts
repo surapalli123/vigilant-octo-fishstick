@@ -290,6 +290,99 @@ describe('DELETE /api/habits/:id', () => {
   })
 })
 
+describe('GET /api/export', () => {
+  it('returns JSON with habits and completions by default', async () => {
+    const habits = [{ id: 1, name: 'Run', frequency: 'daily', active: true, createdAt: new Date() }]
+    const logs = [{ habitId: 1, date: '2024-01-01' }]
+    mockFindMany.mockResolvedValue(habits)
+    mockHabitLogFindMany.mockResolvedValue(logs)
+    const res = await request(app).get('/api/export')
+    expect(res.status).toBe(200)
+    expect(res.headers['content-type']).toMatch(/json/)
+    expect(res.body).toHaveProperty('habits')
+    expect(res.body).toHaveProperty('completions')
+    expect(res.body.habits).toHaveLength(1)
+    expect(res.body.habits[0].name).toBe('Run')
+    expect(res.body.completions).toHaveLength(1)
+    expect(res.body.completions[0].habitId).toBe(1)
+    expect(res.body.completions[0].date).toBe('2024-01-01')
+  })
+
+  it('returns JSON when format=json is specified', async () => {
+    mockFindMany.mockResolvedValue([])
+    mockHabitLogFindMany.mockResolvedValue([])
+    const res = await request(app).get('/api/export?format=json')
+    expect(res.status).toBe(200)
+    expect(res.headers['content-type']).toMatch(/json/)
+    expect(res.body).toHaveProperty('habits')
+    expect(res.body).toHaveProperty('completions')
+  })
+
+  it('returns CSV with correct headers and rows when format=csv', async () => {
+    const habits = [{ id: 1, name: 'Run', frequency: 'daily', active: true, createdAt: new Date() }]
+    const logs = [{ habitId: 1, date: '2024-01-01' }]
+    mockFindMany.mockResolvedValue(habits)
+    mockHabitLogFindMany.mockResolvedValue(logs)
+    const res = await request(app).get('/api/export?format=csv')
+    expect(res.status).toBe(200)
+    expect(res.headers['content-type']).toMatch(/text\/csv/)
+    const lines = (res.text as string).split('\n')
+    expect(lines[0]).toBe('id,name,frequency,active,completionDate')
+    expect(lines[1]).toBe('1,"Run",daily,true,2024-01-01')
+  })
+
+  it('includes a row with empty completionDate in CSV when habit has no logs', async () => {
+    const habits = [{ id: 1, name: 'Rest', frequency: 'weekly', active: true, createdAt: new Date() }]
+    mockFindMany.mockResolvedValue(habits)
+    mockHabitLogFindMany.mockResolvedValue([])
+    const res = await request(app).get('/api/export?format=csv')
+    expect(res.status).toBe(200)
+    const lines = (res.text as string).split('\n')
+    expect(lines[0]).toBe('id,name,frequency,active,completionDate')
+    expect(lines[1]).toBe('1,"Rest",weekly,true,')
+  })
+
+  it('escapes double-quotes in habit names in CSV output', async () => {
+    const habits = [{ id: 1, name: 'My "Habit"', frequency: 'daily', active: true, createdAt: new Date() }]
+    mockFindMany.mockResolvedValue(habits)
+    mockHabitLogFindMany.mockResolvedValue([])
+    const res = await request(app).get('/api/export?format=csv')
+    expect(res.status).toBe(200)
+    const lines = (res.text as string).split('\n')
+    expect(lines[1]).toBe('1,"My ""Habit""",daily,true,')
+  })
+
+  it('returns multiple CSV rows when a habit has multiple completions', async () => {
+    const habits = [{ id: 1, name: 'Run', frequency: 'daily', active: true, createdAt: new Date() }]
+    const logs = [
+      { habitId: 1, date: '2024-01-01' },
+      { habitId: 1, date: '2024-01-02' },
+    ]
+    mockFindMany.mockResolvedValue(habits)
+    mockHabitLogFindMany.mockResolvedValue(logs)
+    const res = await request(app).get('/api/export?format=csv')
+    expect(res.status).toBe(200)
+    const lines = (res.text as string).split('\n')
+    expect(lines).toHaveLength(3) // header + 2 data rows
+    expect(lines[1]).toBe('1,"Run",daily,true,2024-01-01')
+    expect(lines[2]).toBe('1,"Run",daily,true,2024-01-02')
+  })
+
+  it('sets Content-Disposition header for JSON download', async () => {
+    mockFindMany.mockResolvedValue([])
+    mockHabitLogFindMany.mockResolvedValue([])
+    const res = await request(app).get('/api/export?format=json')
+    expect(res.headers['content-disposition']).toMatch(/filename="habits\.json"/)
+  })
+
+  it('sets Content-Disposition header for CSV download', async () => {
+    mockFindMany.mockResolvedValue([])
+    mockHabitLogFindMany.mockResolvedValue([])
+    const res = await request(app).get('/api/export?format=csv')
+    expect(res.headers['content-disposition']).toMatch(/filename="habits\.csv"/)
+  })
+})
+
 describe('GET /api/analytics', () => {
   it('returns zeros when there are no active habits', async () => {
     mockFindMany.mockResolvedValue([])

@@ -392,6 +392,94 @@ describe('Weekly analytics', () => {
   })
 })
 
+describe('Export data', () => {
+  beforeEach(() => {
+    // jsdom doesn't implement URL.createObjectURL/revokeObjectURL
+    if (!URL.createObjectURL) {
+      Object.defineProperty(URL, 'createObjectURL', { writable: true, configurable: true, value: vi.fn(() => 'blob:mock') })
+      Object.defineProperty(URL, 'revokeObjectURL', { writable: true, configurable: true, value: vi.fn() })
+    }
+  })
+
+  it('renders Export JSON and Export CSV buttons', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response)
+    render(<App />)
+    expect(await screen.findByRole('button', { name: /export json/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /export csv/i })).toBeInTheDocument()
+  })
+
+  it('triggers a download when Export JSON is clicked', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.spyOn(global, 'fetch')
+
+    // Initial load
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [],
+    } as Response)
+    // Analytics load
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ weeklyCompletionPct: 0, habitsCompletedThisWeek: 0, mostConsistentHabit: null }),
+    } as Response)
+
+    render(<App />)
+    const exportBtn = await screen.findByRole('button', { name: /export json/i })
+
+    const mockBlob = new Blob(['{"habits":[],"completions":[]}'], { type: 'application/json' })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      blob: async () => mockBlob,
+    } as unknown as Response)
+
+    const clickMock = vi.fn()
+    const mockAnchor = { href: '', download: '', click: clickMock }
+    vi.spyOn(document, 'createElement').mockReturnValueOnce(mockAnchor as unknown as HTMLAnchorElement)
+
+    await user.click(exportBtn)
+
+    await waitFor(() => expect(clickMock).toHaveBeenCalled())
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('format=json'))
+  })
+
+  it('triggers a download when Export CSV is clicked', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.spyOn(global, 'fetch')
+
+    // Initial load
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [],
+    } as Response)
+    // Analytics load
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ weeklyCompletionPct: 0, habitsCompletedThisWeek: 0, mostConsistentHabit: null }),
+    } as Response)
+
+    render(<App />)
+    const exportBtn = await screen.findByRole('button', { name: /export csv/i })
+
+    const mockBlob = new Blob(['id,name,frequency,active,completionDate'], { type: 'text/csv' })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      blob: async () => mockBlob,
+    } as unknown as Response)
+
+    const clickMock = vi.fn()
+    const mockAnchor = { href: '', download: '', click: clickMock }
+    vi.spyOn(document, 'createElement').mockReturnValueOnce(mockAnchor as unknown as HTMLAnchorElement)
+
+    await user.click(exportBtn)
+
+    await waitFor(() => expect(clickMock).toHaveBeenCalled())
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('format=csv'))
+  })
+})
+
 describe('Accessibility', () => {
   it('action buttons have descriptive aria-labels identifying the habit', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue({
