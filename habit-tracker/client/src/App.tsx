@@ -32,6 +32,7 @@ function App() {
   const [editSubmitError, setEditSubmitError] = useState('')
 
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
+  const [exportError, setExportError] = useState('')
 
   const fetchHabits = async () => {
     try {
@@ -153,6 +154,26 @@ function App() {
       }
     } catch {
       setEditSubmitError('Failed to update habit')
+    }
+  }
+
+  const handleExport = async (format: 'json' | 'csv') => {
+    setExportError('')
+    try {
+      const res = await fetch(`${API_BASE}/export?format=${format}`)
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `habits.${format}`
+        a.click()
+        URL.revokeObjectURL(url)
+      } else {
+        setExportError('Export failed. Please try again.')
+      }
+    } catch {
+      setExportError('Export failed. Please try again.')
     }
   }
 
@@ -326,6 +347,16 @@ function App() {
             ))}
           </ul>
         )}
+      </section>
+      <section aria-label="Export data">
+        <h2>Export Data</h2>
+        {exportError && <p role="alert">{exportError}</p>}
+        <button type="button" onClick={() => { void handleExport('json') }}>
+          Export JSON
+        </button>
+        <button type="button" onClick={() => { void handleExport('csv') }}>
+          Export CSV
+        </button>
       </section>
     </div>
   )
